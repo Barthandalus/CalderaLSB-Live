@@ -23,8 +23,10 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #include "../../../common/utils.h"
 #include "../../ability.h"
 #include "../../enmity_container.h"
+#include "../../item_container.h"
 #include "../../entities/charentity.h"
 #include "../../entities/mobentity.h"
+#include "../../items/item_weapon.h"
 #include "../../packets/action.h"
 #include "../../recast_container.h"
 #include "../../status_effect_container.h"
@@ -134,6 +136,8 @@ bool CAbilityState::CanUseAbility()
     {
         auto* PAbility = GetAbility();
         auto* PChar    = static_cast<CCharEntity*>(m_PEntity);
+        auto* PWeapon  = PChar->getStorage(PChar->equipLoc[SLOT_MAIN])->GetItem(PChar->equip[SLOT_MAIN]);
+
         if (PChar->PRecastContainer->HasRecast(RECAST_ABILITY, PAbility->getRecastId(), PAbility->getRecastTime()))
         {
             PChar->pushPacket(new CMessageBasicPacket(PChar, PChar, 0, 0, MSGBASIC_WAIT_LONGER));
@@ -150,19 +154,33 @@ bool CAbilityState::CanUseAbility()
         }
 
         std::unique_ptr<CBasicPacket> errMsg;
-        auto*                         PTarget = GetTarget();
+
+        // Turns Liement into an AoE when Epeolatry is equipped
+        if ((PWeapon->getID() == 20753 || PWeapon->getID() == 21685) && (PAbility->getID() == ABILITY_LIEMENT))
+        {
+            PAbility->setAOE(1);
+            PAbility->setRange(20);
+            PAbility->setValidTarget(3);
+        }
+
+        // Set ability target
+        auto* PTarget = GetTarget();
+
         if (PChar->IsValidTarget(PTarget->targid, PAbility->getValidTarget(), errMsg))
         {
+            // Check if the target is out of range
             if (PChar != PTarget && distance(PChar->loc.p, PTarget->loc.p) > PAbility->getRange())
             {
                 PChar->pushPacket(new CMessageBasicPacket(PChar, PTarget, 0, 0, MSGBASIC_TOO_FAR_AWAY));
                 return false;
             }
+            // Check if the user is in line of sight
             if (!m_PEntity->PAI->TargetFind->canSee(&PTarget->loc.p))
             {
                 m_errorMsg = std::make_unique<CMessageBasicPacket>(m_PEntity, PTarget, PAbility->getID(), 0, MSGBASIC_CANNOT_PERFORM_ACTION);
                 return false;
             }
+            // Caldera TODO: Move this to LUA?
             if (PAbility->getID() >= ABILITY_HEALING_RUBY)
             {
                 // Blood pact MP costs are stored under animation ID

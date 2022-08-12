@@ -150,12 +150,12 @@ void CTrustController::DoCombatTick(time_point tick)
                 }
                 case MID_RANGE:
                 {
-                    PathOutToDistance(PTarget, 6.0f);
+                    PathOutToDistance(PTarget, 10.0f);
                     break;
                 }
                 case LONG_RANGE:
                 {
-                    PathOutToDistance(PTarget, 12.0f);
+                    PathOutToDistance(PTarget, 14.0f);
                     break;
                 }
                 case MELEE_RANGE:
