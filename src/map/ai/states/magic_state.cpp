@@ -189,6 +189,15 @@ bool CMagicState::CanCastSpell(CBattleEntity* PTarget)
 {
     auto ret = m_PEntity->CanUseSpell(GetSpell());
 
+    float range = m_PSpell->getRange();
+
+    if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_THEURGIC_FOCUS) &&
+       (m_PSpell->getSpellFamily() >= SPELLFAMILY_FIRE && m_PSpell->getSpellFamily() <= SPELLFAMILY_FLOOD) ||
+       (m_PSpell->getSpellFamily() >= SPELLFAMILY_FIRA && m_PSpell->getSpellFamily() <= SPELLFAMILY_WATERA))
+    {
+        range = range / 2;
+    }
+
     if (!ret)
     {
         m_errorMsg = std::make_unique<CMessageBasicPacket>(m_PEntity, m_PEntity, static_cast<uint16>(m_PSpell->getID()), 0, MSGBASIC_CANNOT_CAST_SPELL);
@@ -202,6 +211,11 @@ bool CMagicState::CanCastSpell(CBattleEntity* PTarget)
     if (m_PEntity->StatusEffectContainer->HasStatusEffect({ EFFECT_SILENCE, EFFECT_MUTE, EFFECT_OMERTA }))
     {
         m_errorMsg = std::make_unique<CMessageBasicPacket>(m_PEntity, m_PEntity, static_cast<uint16>(m_PSpell->getID()), 0, MSGBASIC_UNABLE_TO_CAST_SPELLS);
+        return false;
+    }
+    if (m_PEntity->StatusEffectContainer->GetConfrontationEffect() != PTarget->StatusEffectContainer->GetConfrontationEffect())
+    {
+        m_errorMsg = std::make_unique<CMessageBasicPacket>(m_PEntity, m_PEntity, static_cast<uint16>(m_PSpell->getID()), 0, MSGBASIC_CANNOT_ON_THAT_TARG);
         return false;
     }
     if (!HasCost())
@@ -222,7 +236,7 @@ bool CMagicState::CanCastSpell(CBattleEntity* PTarget)
         m_errorMsg = std::make_unique<CMessageBasicPacket>(m_PEntity, PTarget, static_cast<uint16>(m_PSpell->getID()), 0, MSGBASIC_TOO_FAR_AWAY);
         return false;
     }
-    if (m_PEntity->objtype == TYPE_PC && distance(m_PEntity->loc.p, PTarget->loc.p) > m_PSpell->getRange())
+    if (m_PEntity->objtype == TYPE_PC && distance(m_PEntity->loc.p, PTarget->loc.p) > range)
     {
         m_errorMsg = std::make_unique<CMessageBasicPacket>(m_PEntity, PTarget, static_cast<uint16>(m_PSpell->getID()), 0, MSGBASIC_OUT_OF_RANGE_UNABLE_CAST);
         return false;
@@ -253,8 +267,8 @@ bool CMagicState::HasCost()
         }
     }
     // check has mp available
-    else if (!m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_MANAFONT) && !(m_flags & MAGICFLAGS_IGNORE_MP) &&
-             battleutils::CalculateSpellCost(m_PEntity, GetSpell()) > m_PEntity->health.mp)
+    else if (!m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_MANAFONT) && !m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_MANAWELL) &&
+             !(m_flags & MAGICFLAGS_IGNORE_MP) && battleutils::CalculateSpellCost(m_PEntity, GetSpell()) > m_PEntity->health.mp)
     {
         if (m_PEntity->objtype == TYPE_MOB && m_PEntity->health.maxmp == 0)
         {
@@ -276,7 +290,8 @@ void CMagicState::SpendCost()
             battleutils::HasNinjaTool(m_PEntity, GetSpell(), true);
         }
     }
-    else if (m_PSpell->hasMPCost() && !m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_MANAFONT) && !(m_flags & MAGICFLAGS_IGNORE_MP))
+    else if (m_PSpell->hasMPCost() && !m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_MANAFONT) &&
+             !m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_MANAWELL) && !(m_flags & MAGICFLAGS_IGNORE_MP))
     {
         int16 cost = battleutils::CalculateSpellCost(m_PEntity, GetSpell());
 
@@ -293,10 +308,15 @@ void CMagicState::SpendCost()
 
         if (xirand::GetRandomNumber(100) < rate)
         {
-            cost = (int16)(cost * (xirand::GetRandomNumber(8.f, 16.f) / 16.0f));
+            cost = (int16)(cost * (xirand::GetRandomNumber(8.f, 15.f) / 16.0f));
         }
 
         m_PEntity->addMP(-cost);
+    }
+
+    if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_MANAWELL))
+    {
+        m_PEntity->StatusEffectContainer->DelStatusEffect(EFFECT_MANAWELL);
     }
 }
 
@@ -327,6 +347,18 @@ void CMagicState::ApplyEnmity(CBattleEntity* PTarget, int ce, int ve)
     if (m_PSpell->isNa())
     {
         m_PEntity->addModifier(Mod::ENMITY, -(m_PEntity->getMod(Mod::DIVINE_BENISON) >> 1)); // Half of divine benison mod amount = -enmity
+    }
+    // Subtle Sorcery sets Cumulative Enmity of spells to 0
+    if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_SUBTLE_SORCERY))
+    {
+        ce = 0;
+    }
+    if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_DIVINE_EMBLEM) &&
+       (m_PSpell->getSpellFamily() == SPELLFAMILY_HOLY || m_PSpell->getSpellFamily() == SPELLFAMILY_BANISH ||
+        m_PSpell->getSpellFamily() == SPELLFAMILY_BANISHGA))
+    {
+        ve = ve * (1.0f + (m_PEntity->getMod(Mod::DIVINE_ENMITY_BONUS) / 100.0f));
+        ce = ce * (1.0f + (m_PEntity->getMod(Mod::DIVINE_ENMITY_BONUS) / 100.0f));
     }
 
     if (PTarget != nullptr)
@@ -378,6 +410,11 @@ void CMagicState::ApplyEnmity(CBattleEntity* PTarget, int ce, int ve)
     if (m_PSpell->isNa())
     {
         m_PEntity->delModifier(Mod::ENMITY, -(m_PEntity->getMod(Mod::DIVINE_BENISON) >> 1)); // Half of divine benison mod amount = -enmity
+    }
+    // Caldera TODO: Handle this during spell cast after the bonus is applied?
+    if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_CASCADE) && m_PSpell->getSpellGroup() == SPELLGROUP_BLACK)
+    {
+        m_PEntity->StatusEffectContainer->DelStatusEffect(EFFECT_CASCADE);
     }
 }
 

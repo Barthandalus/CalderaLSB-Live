@@ -1,21 +1,16 @@
 ﻿/*
 ===========================================================================
-
   Copyright (c) 2010-2015 Darkstar Dev Teams
-
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see http://www.gnu.org/licenses/
-
 ===========================================================================
 */
 
@@ -25,6 +20,7 @@
 #include "mob_modifier.h"
 #include "packets/inventory_finish.h"
 #include "status_effect_container.h"
+#include "utils/battleutils.h"
 
 /************************************************************************
  *                                                                        *
@@ -233,6 +229,43 @@ void CAttackRound::CreateAttacks(CItemWeapon* PWeapon, PHYSICAL_ATTACK_DIRECTION
         num = PWeapon->getHitCount();
     }
 
+    // Octave club handling
+    if (PWeapon->getID() == 18852)
+    {
+        if (m_attacker->GetMLevel() % 2 == 0)
+        {
+            num = xirand::GetRandomNumber(2);
+        }
+        else if (m_attacker->GetMLevel() % 3 == 0)
+        {
+            num = xirand::GetRandomNumber(3);
+        }
+        else if (m_attacker->GetMLevel() % 4 == 0)
+        {
+            num = xirand::GetRandomNumber(4);
+        }
+        else if (m_attacker->GetMLevel() % 5 == 0)
+        {
+            num = xirand::GetRandomNumber(5);
+        }
+        else if (m_attacker->GetMLevel() % 6 == 0)
+        {
+            num = xirand::GetRandomNumber(6);
+        }
+        else if (m_attacker->GetMLevel() % 7 == 0)
+        {
+            num = xirand::GetRandomNumber(7);
+        }
+        else if (m_attacker->GetMLevel() % 8 == 0)
+        {
+            num = xirand::GetRandomNumber(8);
+        }
+        else if (m_attacker->GetMLevel() == 99)
+        {
+            num = xirand::GetRandomNumber(8);
+        }
+    }
+
     // Existance of "Occasionally attacks X times" overwrites PWeapon hit count
     if (isPC && m_attacker->getMod(Mod::MAX_SWINGS))
     {
@@ -283,15 +316,35 @@ void CAttackRound::CreateAttacks(CItemWeapon* PWeapon, PHYSICAL_ATTACK_DIRECTION
         {
             doubleAttack += PChar->PMeritPoints->GetMeritValue(MERIT_DOUBLE_ATTACK_RATE, PChar);
         }
+
+        // Augments Innin gear mod (Adds bonus Double Attack when attacking from behind)
+        if (PChar->StatusEffectContainer->HasStatusEffect(EFFECT_INNIN) && abs(m_defender->loc.p.rotation - m_attacker->loc.p.rotation) < 23
+            && PChar->getMod(Mod::AUGMENT_INNIN) > 0)
+        {
+            doubleAttack += PChar->getMod(Mod::AUGMENT_INNIN);
+        }
+
+        // Dancer's Striking Flourish
+        if (m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_STRIKING_FLOURISH) && (direction == PHYSICAL_ATTACK_DIRECTION::RIGHTATTACK))
+        {
+            doubleAttack = 100;
+        }
+
+        // Dancer's Ternary Flourish
+        if (m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_TERNARY_FLOURISH) && (direction == PHYSICAL_ATTACK_DIRECTION::RIGHTATTACK))
+        {
+            tripleAttack = 100;
+        }
         // TODO: Quadruple attack merits when SE release them.
     }
+
     quadAttack   = std::clamp<int16>(quadAttack, 0, 100);
     doubleAttack = std::clamp<int16>(doubleAttack, 0, 100);
     tripleAttack = std::clamp<int16>(tripleAttack, 0, 100);
 
     // Preference matters! The following are additional hits to the default hit that don't stack up
     // Mikage > Quad > Triple > Double > Mythic Aftermath > Occasionally Attacks > Dynamis [D] Follow-Up > Hasso + Zanshin
-    // Daken is handled separately in CreateDakenAttack() and Zanshin in src/map/entities/battleentity.cpp#L1768
+    // Daken is handled separately in CreateDakenAttack() and Zanshin in src/map/entities/battleentity.cpp
 
     // Checking Mikage Effect - Hits Vary With Num of Utsusemi Shadows for Main Weapon
     if (m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_MIKAGE) && m_attacker->m_Weapons[SLOT_MAIN]->getID() == PWeapon->getID())
@@ -301,17 +354,17 @@ void CAttackRound::CreateAttacks(CItemWeapon* PWeapon, PHYSICAL_ATTACK_DIRECTION
         AddAttackSwing(PHYSICAL_ATTACK_TYPE::NORMAL, direction, shadows);
     }
     // Quad/Triple/Double Attack
-    else if (xirand::GetRandomNumber(100) < quadAttack)
+    else if (num == 1 && xirand::GetRandomNumber(100) < quadAttack)
     {
         AddAttackSwing(PHYSICAL_ATTACK_TYPE::QUAD, direction, 4);
         multiHitOccurred = true;
     }
-    else if (xirand::GetRandomNumber(100) < tripleAttack)
+    else if (num == 1 && xirand::GetRandomNumber(100) < tripleAttack)
     {
         AddAttackSwing(PHYSICAL_ATTACK_TYPE::TRIPLE, direction, 3);
         multiHitOccurred = true;
     }
-    else if (xirand::GetRandomNumber(100) < doubleAttack)
+    else if (num == 1 && xirand::GetRandomNumber(100) < doubleAttack)
     {
         AddAttackSwing(PHYSICAL_ATTACK_TYPE::DOUBLE, direction, 2);
         multiHitOccurred = true;
@@ -451,6 +504,12 @@ void CAttackRound::CreateDakenAttack()
             if (xirand::GetRandomNumber(100) < daken)
             {
                 AddAttackSwing(PHYSICAL_ATTACK_TYPE::DAKEN, RIGHTATTACK, 1);
+            }
+            if (m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_SANGE))
+            {
+                CCharEntity* PChar = (CCharEntity*)m_attacker;
+                // printf("attackround.cpp CreateDakenAttack HAS SANGE\n");
+                battleutils::RemoveAmmo(PChar, 1);
             }
         }
     }

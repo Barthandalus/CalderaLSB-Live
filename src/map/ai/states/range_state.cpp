@@ -68,6 +68,11 @@ CRangeState::CRangeState(CBattleEntity* PEntity, uint16 targid)
         }
     }
 
+    if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_OVERKILL))
+    {
+        delay = (int16)(delay * 0.5f);
+    }
+
     m_aimTime  = std::chrono::milliseconds(delay);
     m_startPos = m_PEntity->loc.p;
 

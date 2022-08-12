@@ -78,13 +78,21 @@ CWeaponSkill* CWeaponSkillState::GetSkill()
 void CWeaponSkillState::SpendCost()
 {
     auto tp = 0;
+
     if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_MEIKYO_SHISUI))
     {
         tp = m_PEntity->addTP(-1000);
     }
     else if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_SEKKANOKI))
     {
+        auto currentTP = m_PEntity->health.tp;
         tp = m_PEntity->addTP(-1000);
+
+        if (m_PEntity->getMod(Mod::ENH_SEKKANOKI) > 0)
+        {
+            tp = tp + (int32)((currentTP - tp) * ((float)m_PEntity->getMod(Mod::ENH_SEKKANOKI) / 100.0f));
+        }
+
         m_PEntity->StatusEffectContainer->DelStatusEffect(EFFECT_SEKKANOKI);
     }
     else
