@@ -1,21 +1,16 @@
 ﻿/*
 ===========================================================================
-
   Copyright (c) 2010-2015 Darkstar Dev Teams
-
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see http://www.gnu.org/licenses/
-
 ===========================================================================
 */
 
@@ -560,7 +555,7 @@ enum EFFECT
     EFFECT_ASYLUM                = 492,
     EFFECT_SUBTLE_SORCERY        = 493,
     EFFECT_STYMIE                = 494,
-    // EFFECT_NONE                     = 495,
+    EFFECT_RUN_WILD              = 495, // (None) DEBUG: Please report. Caldera custom assigned to Run Wild
     EFFECT_INTERVENE        = 496,
     EFFECT_SOUL_ENSLAVEMENT = 497,
     EFFECT_UNLEASH          = 498,
@@ -571,7 +566,7 @@ enum EFFECT
     EFFECT_FLY_HIGH         = 503,
     EFFECT_ASTRAL_CONDUIT   = 504,
     EFFECT_UNBRIDLED_WISDOM = 505,
-    // EFFECT_NONE                     = 506,
+    EFFECT_BOUNTY_SHOT      = 506, // (None) DEBUG: Please report. Caldera custom assigned to Bounty Shot
     EFFECT_GRAND_PAS          = 507,
     EFFECT_WIDENED_COMPASS    = 508,
     EFFECT_ODYLLIC_SUBTERFUGE = 509,
@@ -579,14 +574,14 @@ enum EFFECT
     EFFECT_REIVE_MARK         = 511,
     EFFECT_IONIS              = 512,
     EFFECT_BOLSTER            = 513,
-    // EFFECT_NONE                     = 514,
+    EFFECT_NIGHTMARE          = 514, // (None) DEBUG: Please report. Caldera custom assigned to Nightmare
     EFFECT_LASTING_EMANATION  = 515,
     EFFECT_ECLIPTIC_ATTRITION = 516,
     EFFECT_COLLIMATED_FERVOR  = 517,
     EFFECT_DEMATERIALIZE      = 518,
     EFFECT_THEURGIC_FOCUS     = 519,
-    // EFFECT_NONE                     = 520,
-    // EFFECT_NONE                     = 521,
+    EFFECT_HEADY_ARTIFICE     = 520, // (None) DEBUG: Please report. Caldera custom assigned to Heady Artifice
+    // EFFECT_NONE                     = 521, // (None) DEBUG: Please report.
     EFFECT_ELEMENTAL_SFORZO        = 522,
     EFFECT_IGNIS                   = 523,
     EFFECT_GELUS                   = 524,
@@ -697,6 +692,8 @@ enum EFFECT
     EFFECT_MOOGLE_AMPLIFIER        = 629,
     EFFECT_TAINT                   = 630,
     EFFECT_HAUNT                   = 631,
+    EFFECT_ZEALOUS_SNORT           = 632, // (None) DEBUG: Please report. Caldera custom assigned to Zealous Snort
+    EFFECT_FAMILIAR                = 633, // (None) DEBUG: Please report. Caldera custom assigned to Familiar
 
     // Effect icons in packet can go from 0-767, so no custom effects should go in that range.
 

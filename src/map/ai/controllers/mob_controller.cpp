@@ -1,27 +1,23 @@
 ﻿/*
 ===========================================================================
-
 Copyright (c) 2010-2015 Darkstar Dev Teams
-
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
-
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
-
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see http://www.gnu.org/licenses/
-
 ===========================================================================
 */
 
 #include "mob_controller.h"
 #include "../../../common/utils.h"
 #include "../../enmity_container.h"
+#include "../../entities/baseentity.h"
 #include "../../entities/mobentity.h"
 #include "../../mob_modifier.h"
 #include "../../mob_spell_container.h"
@@ -29,6 +25,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #include "../../party.h"
 #include "../../status_effect_container.h"
 #include "../../utils/battleutils.h"
+#include "../../utils/charutils.h"
 #include "../../utils/petutils.h"
 #include "../ai_container.h"
 #include "../helpers/targetfind.h"
@@ -54,6 +51,30 @@ void CMobController::Tick(time_point tick)
         if (PMob->PAI->IsEngaged())
         {
             DoCombatTick(tick);
+
+            // Decay enfeebling immunity mods
+            if (m_Tick >= m_DebuffResistDecay)
+            {
+                CBattleEntity* PBattleEntity = (CBattleEntity*)PMob;
+
+                Mod immunityMods[15] =
+                {
+                    Mod::IMMUNITY_GRAVITY,  Mod::IMMUNITY_SLEEP, Mod::IMMUNITY_LULLABY, Mod::IMMUNITY_POISON,
+                    Mod::IMMUNITY_PARALYZE, Mod::IMMUNITY_BLIND, Mod::IMMUNITY_SILENCE, Mod::IMMUNITY_VIRUS,
+                    Mod::IMMUNITY_PETRIFY,  Mod::IMMUNITY_BIND,  Mod::IMMUNITY_CURSE,   Mod::IMMUNITY_SLOW,
+                    Mod::IMMUNITY_STUN,     Mod::IMMUNITY_CHARM, Mod::IMMUNITY_AMNESIA
+                };
+
+                for (int i = 0; i < 15; i++)
+                {
+                    if (PBattleEntity->getMod(immunityMods[i]) > 0)
+                    {
+                        PBattleEntity->delModifier(immunityMods[i], 1);
+                    }
+                }
+
+                m_DebuffResistDecay = m_Tick + 3s;
+            }
         }
         else if (!PMob->isDead())
         {
@@ -349,6 +370,10 @@ bool CMobController::MobSkill(int wsList)
             if (currentDistance <= PMobSkill->getDistance())
             {
                 return MobSkill(PActionTarget->targid, PMobSkill->getID());
+            }
+            else if (currentDistance > PMobSkill->getDistance())
+            {
+                PMob->health.tp = 0;
             }
         }
     }
@@ -810,12 +835,16 @@ void CMobController::DoRoamTick(time_point tick)
                 // recover 10% health
                 if (PMob->Rest(0.1f))
                 {
+                    // Reset Treasure Hunter level to 0
+                    PMob->m_THLvl = 0;
                     // health updated
                     PMob->updatemask |= UPDATE_HP;
                 }
 
                 if (PMob->GetHPP() == 100)
                 {
+                    // Reset Treasure Hunter level to 0
+                    PMob->m_THLvl = 0;
                     // at max health undirty exp
                     PMob->m_HiPCLvl     = 0;
                     PMob->m_HiPartySize = 0;
@@ -1087,6 +1116,20 @@ bool CMobController::CanAggroTarget(CBattleEntity* PTarget)
     if (PTarget->isDead() || PTarget->isMounted())
     {
         return false;
+    }
+
+    if (PTarget->objtype == TYPE_PC && PTarget != nullptr)
+    {
+        CCharEntity* PChar = (CCharEntity*)PTarget;
+
+        uint16 playerLvl = PChar->GetMLevel() + charutils::getItemLevelDifference(PChar);
+        uint16 mobLvl = PMob->GetMLevel();
+
+        // Don't aggro, you're too high level for me
+        if (playerLvl - mobLvl >= 20)
+        {
+            return false;
+        }
     }
 
     return PMob->PMaster == nullptr && PMob->PAI->IsSpawned() && !PMob->PAI->IsEngaged() && CanDetectTarget(PTarget);

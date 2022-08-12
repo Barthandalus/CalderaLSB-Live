@@ -1,21 +1,16 @@
 ﻿/*
 ===========================================================================
-
   Copyright (c) 2010-2015 Darkstar Dev Teams
-
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see http://www.gnu.org/licenses/
-
 ===========================================================================
 */
 
@@ -88,36 +83,36 @@ void CAutomatonController::setMagicCooldowns()
 {
     switch (PAutomaton->getHead())
     {
-        case HEAD_HARLEQUIN:
+        case HEAD_HARLEQUIN: // WAR/RDM
         {
             m_magicCooldown    = 10s;
             m_enfeebleCooldown = 10s;
             m_healCooldown     = 15s;
         }
         break;
-        case HEAD_VALOREDGE:
+        case HEAD_VALOREDGE: // PLD
         {
             m_magicCooldown = 20s;
             m_healCooldown  = 20s;
         }
         break;
-        case HEAD_SHARPSHOT:
+        case HEAD_SHARPSHOT: // RNG
         {
             m_magicCooldown    = 12s;
             m_enfeebleCooldown = 12s;
             m_healCooldown     = 18s; // Guess
         }
         break;
-        case HEAD_STORMWAKER:
+        case HEAD_STORMWAKER: // RDM
         {
             m_magicCooldown     = 10s;
             m_enfeebleCooldown  = 12s;
             m_healCooldown      = 15s; // Guess
-            m_elementalCooldown = 33s; // Guess
+            m_elementalCooldown = 40s; // Guess
             m_enhanceCooldown   = 10s; // Guess
         }
         break;
-        case HEAD_SOULSOOTHER:
+        case HEAD_SOULSOOTHER:  // WHM
         {
             m_magicCooldown    = 4s;
             m_enfeebleCooldown = 4s;
@@ -126,7 +121,7 @@ void CAutomatonController::setMagicCooldowns()
             m_statusCooldown   = 15s;
         }
         break;
-        case HEAD_SPIRITREAVER:
+        case HEAD_SPIRITREAVER: // BLM
         {
             m_magicCooldown     = 10s;
             m_enfeebleCooldown  = 10s;
@@ -194,6 +189,10 @@ void CAutomatonController::DoCombatTick(time_point tick)
     {
         auto maneuvers = GetCurrentManeuvers();
 
+        if (TryHeadyArtifice())
+        {
+            return;
+        }
         if (TryShieldBash())
         {
             m_LastShieldBashTime = m_Tick;
@@ -246,6 +245,57 @@ bool CAutomatonController::TryAction()
     return false;
 }
 
+bool CAutomatonController::TryHeadyArtifice()
+{
+    if (PAutomaton->StatusEffectContainer->HasStatusEffect(EFFECT_HEADY_ARTIFICE))
+    {
+        uint16 mobSkillID = 0;
+
+        switch (PAutomaton->getHead())
+        {
+            case HEAD_HARLEQUIN:
+            {
+                mobSkillID = 688;  // Mighty Strikes
+            }
+            break;
+            case HEAD_VALOREDGE:
+            {
+                mobSkillID = 2248; // Invincible
+            }
+            break;
+            case HEAD_SHARPSHOT:
+            {
+                mobSkillID = 1151; // Eagle Eye Shot
+            }
+            break;
+            case HEAD_STORMWAKER:
+            {
+                mobSkillID = 1012; // Chainspell
+            }
+            break;
+            case HEAD_SOULSOOTHER:
+            {
+                mobSkillID = 1486; // Benediction
+            }
+            break;
+            case HEAD_SPIRITREAVER:
+            {
+                mobSkillID = 691;  // Manafont
+            }
+            break;
+        }
+
+        if (mobSkillID > 0)
+        {
+            PAutomaton->PAI->MobSkill(PAutomaton->targid, mobSkillID);
+            PAutomaton->StatusEffectContainer->DelStatusEffect(EFFECT_HEADY_ARTIFICE);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool CAutomatonController::TryShieldBash()
 {
     CState* PState = PTarget->PAI->GetCurrentState();
@@ -261,6 +311,16 @@ bool CAutomatonController::TryShieldBash()
 
 bool CAutomatonController::TrySpellcast(const CurrentManeuvers& maneuvers)
 {
+    if (PAutomaton->StatusEffectContainer->HasStatusEffect(EFFECT_CHAINSPELL))
+    {
+        m_magicCooldown = 3s;
+    }
+
+    if (PAutomaton->StatusEffectContainer->HasStatusEffect(EFFECT_MANAFONT))
+    {
+        m_magicCooldown = 5s;
+    }
+
     if (!PAutomaton->PMaster || m_magicCooldown == 0s ||
         m_Tick <= m_LastMagicTime + (m_magicCooldown - std::chrono::seconds(PAutomaton->getMod(Mod::AUTO_MAGIC_DELAY))) || !CanCastSpells())
     {
@@ -421,6 +481,11 @@ bool CAutomatonController::TrySpellcast(const CurrentManeuvers& maneuvers)
 
 bool CAutomatonController::TryHeal(const CurrentManeuvers& maneuvers)
 {
+    if (PAutomaton->StatusEffectContainer->HasStatusEffect(EFFECT_CHAINSPELL))
+    {
+        m_healCooldown = 5s;
+    }
+
     if (!PAutomaton->PMaster || m_healCooldown == 0s ||
         m_Tick <= m_LastHealTime + (m_healCooldown - std::chrono::seconds(PAutomaton->getMod(Mod::AUTO_HEALING_DELAY))))
     {
@@ -573,6 +638,16 @@ inline bool resistanceComparator(const std::pair<SpellID, int16>& firstElem, con
 
 bool CAutomatonController::TryElemental(const CurrentManeuvers& maneuvers)
 {
+    if (PAutomaton->StatusEffectContainer->HasStatusEffect(EFFECT_CHAINSPELL))
+    {
+        m_elementalCooldown = 20s;
+    }
+
+    if (PAutomaton->StatusEffectContainer->HasStatusEffect(EFFECT_MANAFONT))
+    {
+        m_elementalCooldown = 15s;
+    }
+
     if (!PAutomaton->PMaster || m_elementalCooldown == 0s || m_Tick <= m_LastElementalTime + m_elementalCooldown)
     {
         return false;
@@ -703,6 +778,11 @@ bool CAutomatonController::TryElemental(const CurrentManeuvers& maneuvers)
 
 bool CAutomatonController::TryEnfeeble(const CurrentManeuvers& maneuvers)
 {
+    if (PAutomaton->StatusEffectContainer->HasStatusEffect(EFFECT_CHAINSPELL))
+    {
+        m_enfeebleCooldown = 5s;
+    }
+
     if (!PAutomaton->PMaster || m_enfeebleCooldown == 0s || m_Tick <= m_LastEnfeebleTime + m_enfeebleCooldown)
     {
         return false;
@@ -1072,6 +1152,11 @@ bool CAutomatonController::TryEnfeeble(const CurrentManeuvers& maneuvers)
 
 bool CAutomatonController::TryStatusRemoval(const CurrentManeuvers& maneuvers)
 {
+    if (PAutomaton->StatusEffectContainer->HasStatusEffect(EFFECT_CHAINSPELL))
+    {
+        m_statusCooldown = 5s;
+    }
+
     if (!PAutomaton->PMaster || m_statusCooldown == 0s || m_Tick <= m_LastStatusTime + m_statusCooldown)
     {
         return false;
@@ -1163,6 +1248,11 @@ bool CAutomatonController::TryStatusRemoval(const CurrentManeuvers& maneuvers)
 
 bool CAutomatonController::TryEnhance()
 {
+    if (PAutomaton->StatusEffectContainer->HasStatusEffect(EFFECT_CHAINSPELL))
+    {
+        m_enhanceCooldown = 5s;
+    }
+
     if (!PAutomaton->PMaster || m_enhanceCooldown == 0s || m_Tick <= m_LastEnhanceTime + m_enhanceCooldown)
     {
         return false;
