@@ -188,6 +188,16 @@ uint16 CAbility::getValidTarget() const
     return m_validTarget;
 }
 
+void CAbility::setTotalTargets(uint8 value)
+{
+    m_totalTargets = value;
+}
+
+uint8 CAbility::getTotalTargets() const
+{
+    return m_totalTargets;
+}
+
 uint16 CAbility::getAddType() const
 {
     return m_addType;

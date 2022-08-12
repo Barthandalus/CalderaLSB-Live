@@ -660,6 +660,9 @@ enum ABILITY
     ABILITY_DISEMBOWEL        = 786,
     ABILITY_EXTIRPATING_SALVO = 787,
 
+    ABILITY_CROSSTHRASH       = 795,
+    ABILITY_PREDATORY_GLARE   = 796,
+
     ABILITY_CLARSACH_CALL    = 960,
     ABILITY_WELT             = 961,
     ABILITY_KATABATIC_BLADES = 962,
@@ -670,11 +673,11 @@ enum ABILITY
     ABILITY_SONIC_BUFFET     = 967,
     ABILITY_TORNADO_II       = 968,
     ABILITY_WINDS_BLESSING   = 969,
-    ABILITY_HYSTERIC_ASSAULT = 970
+    ABILITY_HYSTERIC_ASSAULT = 970,
 
 };
 
-#define MAX_ABILITY_ID 970
+#define MAX_ABILITY_ID 971
 
 struct Charge_t
 {
@@ -711,6 +714,7 @@ public:
     float      getRange() const;
     uint8      getAOE() const;
     uint16     getValidTarget() const;
+    uint8 getTotalTargets() const;
     uint16     getAddType() const;
     uint16     getMessage() const;
     uint16     getAoEMsg() const;
@@ -731,6 +735,7 @@ public:
     void setRange(float range);
     void setAOE(uint8 aoe);
     void setValidTarget(uint16 validTarget);
+    void setTotalTargets(uint8 value);
     void setAddType(uint16 addtype);
     void setMessage(uint16 message);
     void setRecastTime(uint16 recastTime);
@@ -753,6 +758,7 @@ private:
     float       m_range;
     uint8       m_aoe;
     uint16      m_validTarget;
+    uint8       m_totalTargets;
     uint16      m_addType;
     uint16      m_message;
     uint16      m_recastTime;
