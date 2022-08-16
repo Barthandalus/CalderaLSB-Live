@@ -264,6 +264,8 @@ public:
 
     bool m_bReleaseTargIDOnDeath = false;
 
+    time_point m_nukeWallTimer[8];
+
     static constexpr float sound_range{ 8.f };
     static constexpr float sight_range{ 15.f };
 

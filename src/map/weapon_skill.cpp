@@ -35,6 +35,7 @@ CWeaponSkill::CWeaponSkill(uint16 id)
     m_TertiarySkillchain  = SC_NONE;
     m_Range               = 0;
     m_AOE                 = 0;
+    m_AOERange            = 0;
     m_mainOnly            = 0;
     m_unlockId            = 0;
 }
@@ -125,6 +126,11 @@ void CWeaponSkill::setAoe(uint8 aoe)
     m_AOE = aoe;
 }
 
+void CWeaponSkill::setAoeRange(uint8 range)
+{
+    m_AOERange = range;
+}
+
 void CWeaponSkill::setRange(uint8 range)
 {
     m_Range = range;
@@ -178,6 +184,11 @@ duration CWeaponSkill::getAnimationTime()
 uint8 CWeaponSkill::getAoe() const
 {
     return m_AOE;
+}
+
+uint8 CWeaponSkill::getAoeRange() const
+{
+    return m_AOERange;
 }
 
 uint8 CWeaponSkill::getRange() const

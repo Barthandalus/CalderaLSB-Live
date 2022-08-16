@@ -27,6 +27,10 @@
 #include "modifier.h"
 #include <vector>
 
+// Found under PolUtils String Tables > English > Ability Names
+// Find the trait in the list and subtract 1536 from its index ####
+// Ex. Gilfinder ID is 1556 - 1536 = 20
+
 enum TRAITTYPE
 {
     TRAIT_ACCURACY_BONUS      = 1,
@@ -142,10 +146,20 @@ enum TRAITTYPE
     TRAIT_SUPERIOR            = 124,
     TRAIT_MAGIC_ACC_BONUS     = 125,
     TRAIT_MAGIC_EVA_BONUS     = 126,
-    TRAIT_SMITE               = 127
+    TRAIT_SMITE               = 127,
+    TRAIT_DAMAGE_LIMIT_UP     = 129,
+    TRAIT_ANIMUS_SOLACE       = 130,
+    TRAIT_ANIMUS_MISERY       = 131,
+    TRAIT_CON_ANIMA           = 132,
+    TRAIT_CON_BRIO            = 133,
+    TRAIT_WS_DAMAGE_BOOST     = 134,
+    TRAIT_MAX_HP_BOOST_II     = 135,
+    TRAIT_SHIELD_BARRIER      = 136,
+    TRAIT_TANDEM_STRIKE       = 137,
+    TRAIT_TANDEM_BLOW         = 138,
 };
 
-#define MAX_TRAIT_ID 128
+#define MAX_TRAIT_ID 139
 
 /************************************************************************
  *                                                                       *
@@ -156,9 +170,9 @@ enum TRAITTYPE
 class CTrait
 {
 public:
-    CTrait(uint8 id);
+    CTrait(uint16 id);
 
-    uint8 getID() const
+    uint16 getID() const
     {
         return m_id;
     }
@@ -213,7 +227,7 @@ public:
     }
 
 private:
-    uint8  m_id{ 0 };
+    uint16 m_id{ 0 };
     uint8  m_job{ 0 };
     uint8  m_level{ 0 };
     Mod    m_mod{ Mod::NONE };

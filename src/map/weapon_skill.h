@@ -44,6 +44,7 @@ public:
     bool     isAoE() const;
     bool     mainOnly() const; // can only be used as main job
     uint8    getAoe() const;
+    uint8    getAoeRange() const;
     uint8    getAnimationId() const;
     duration getAnimationTime();
     uint8    getType() const;
@@ -58,6 +59,7 @@ public:
     void setSecondarySkillchain(uint8 skillchain);
     void setTertiarySkillchain(uint8 skillchain);
     void setAoe(uint8 aoe);
+    void setAoeRange(uint8 range);
     void setAnimationId(int8 animation);
     void setAnimationTime(duration time);
     void setType(uint8 type);
@@ -84,6 +86,7 @@ private:
     uint8    m_TertiarySkillchain;
     uint8    m_Range;
     uint8    m_AOE;
+    uint8    m_AOERange;
     uint8    m_mainOnly;
     uint8    m_unlockId;
 
