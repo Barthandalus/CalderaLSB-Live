@@ -1137,10 +1137,10 @@ enum class Mod
     SDT_MAGIC                       = 3210, // Magic Specific Damage Taken
     SDT_BREATH                      = 3211, // Breath Specific Damage Taken
 
-    ENH_ERASE                       = 3208, // Increases the number of effects removed by Erase (Cleric's Torque/+1/+2)
-    ENH_DISPEL                      = 3209, // Increases the number of effects removed by Dispel (Duelist's Torque/+1/+2)
-    ENH_ENFEEBLE                    = 3210, // Increases Enfeebling magic potency + (Duelist's Torque/+1/+2)
-    UTSU_ATK_SHADOWS                = 3211, // Adds Attack for each Utsusemi Shadow Image present
+    ENH_ERASE                       = 3300, // Increases the number of effects removed by Erase (Cleric's Torque/+1/+2)
+    ENH_DISPEL                      = 3301, // Increases the number of effects removed by Dispel (Duelist's Torque/+1/+2)
+    ENH_ENFEEBLE                    = 3302, // Increases Enfeebling magic potency + (Duelist's Torque/+1/+2)
+    UTSU_ATK_SHADOWS                = 3304, // Adds Attack for each Utsusemi Shadow Image present
 };
 
 // temporary workaround for using enum class as unordered_map key until compilers support it

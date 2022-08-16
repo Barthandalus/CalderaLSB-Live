@@ -142,7 +142,7 @@ uint8 CAutomatonEntity::addBurden(uint8 element, int8 burden)
 
     m_Burden[element] = std::clamp(m_Burden[element] + burden, 0, 255);
 
-    if (burden > 0)
+    /* if (burden > 0)
     {
         // check for overload
         int16 thresh = 30 + PMaster->getMod(Mod::OVERLOAD_THRESH);
@@ -154,8 +154,8 @@ uint8 CAutomatonEntity::addBurden(uint8 element, int8 burden)
                 return m_Burden[element] - thresh;
             }
         }
-    }
-    return 0;
+    } */
+    return m_Burden[element];
 }
 
 uint8 CAutomatonEntity::getOverloadChance(uint8 element)

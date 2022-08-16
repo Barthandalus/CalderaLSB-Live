@@ -210,10 +210,61 @@ enum SUBSKILLTYPE
     SUBSKILL_RAPHIE     = 65,
     SUBSKILL_MAC        = 66,
     SUBSKILL_SILAS      = 67,
-    SUBSKILL_TOLOI      = 68
+    SUBSKILL_TOLOI      = 68,
+    SUBSKILL_ROCHE      = 77,
+    SUBSKILL_CAROLINE   = 78,
+    SUBSKILL_KEN        = 79,
+    SUBSKILL_JEDD       = 80,
+    SUBSKILL_ANNABELLE  = 81,
+    SUBSKILL_WALUIS     = 82,
+    SUBSKILL_ARTHUR     = 83,
+    SUBSKILL_CANDI      = 84,
+    SUBSKILL_HONEY      = 85,
+    SUBSKILL_KIYOMARO   = 86,
+    SUBSKILL_VICKIE     = 87,
+    SUBSKILL_ALICE      = 88,
+    SUBSKILL_STORM      = 89,
+    SUBSKILL_IYO        = 90,
+    SUBSKILL_PATRICK    = 91,
+    SUBSKILL_SHIZUNA    = 92,
+    SUBSKILL_RANDY      = 93,
+    SUBSKILL_LYNN       = 94,
+    SUBSKILL_PERCIVAL   = 95,
+    SUBSKILL_ACUEX      = 96,
+    SUBSKILL_BREDO      = 97,
+    SUBSKILL_WEEVIL     = 98,
+    SUBSKILL_ANGELINA   = 99,
+    SUBSKILL_REINHARD   = 100,
+    SUBSKILL_HERMES     = 101,
+    SUBSKILL_IBUKI      = 102,
+    SUBSKILL_ZHIVAGO    = 103,
+    SUBSKILL_MALFIK     = 104,
+    SUBSKILL_ANGUS      = 105,
+    SUBSKILL_XERIN      = 106,
+    SUBSKILL_BERTHA     = 107,
+    SUBSKILL_SPIDER     = 108,
+    SUBSKILL_HACHIROBE  = 109,
+    SUBSKILL_COLIBRI    = 110,
+    SUBSKILL_LEERA      = 111,
+    SUBSKILL_DORTWIN    = 112,
+    SUBSKILL_PETER      = 113,
+    SUBSKILL_HENRY      = 114,
+    SUBSKILL_MOSQUITO   = 115,
+    SUBSKILL_YOKO       = 116,
+    SUBSKILL_GLENN      = 117,
+    SUBSKILL_PORTER     = 118,
+    SUBSKILL_EDWIN      = 119,
+    SUBSKILL_YBEETLE    = 120,
+    SUBSKILL_SEFINA     = 121,
+    SUBSKILL_LYNX       = 122,
+    SUBSKILL_GASTON     = 123,
+    SUBSKILL_HIPPOGRYPH = 124,
+    SUBSKILL_ROLAND     = 125,
+    SUBSKILL_SLIME      = 126,
+    SUBSKILL_PATRICE    = 127,
 };
 
-// ячейки экипировки. монстры используют лишь первые четыре, персонаж использует все
+// Equipment slots. Monsters use only the first four, player characters use all
 
 enum SLOTTYPE
 {
@@ -239,9 +290,9 @@ enum SLOTTYPE
 
 #define MAX_SLOTTYPE 18
 
-// CROSSBOW и GUN - это Piercing, разделение сделано из-за одинакового skilltype
-// для возможности различить эти орудия при экипировке и избавиться от ошибки
-// использования пуль с арбалетом и арбалетных стрел с огнестрельным оружием (только персонажи)
+// CROSSBOW & GUN - Both weapons are Piercing, the division is done due to the same skilltype
+// to be able to distinguish between these weapons when equipped and get rid of the error
+// using arrows and crossbow bolts with firearms (player characters only)
 
 enum class ATTACK_TYPE
 {

@@ -70,7 +70,7 @@ bool CPlayerController::Engage(uint16 targid)
     {
         if (distance(PChar->loc.p, PTarget->loc.p) < 30)
         {
-            if (m_lastAttackTime + std::chrono::milliseconds(PChar->GetWeaponDelay(false)) * 0.75f < server_clock::now())
+            if (m_lastAttackTime + std::chrono::milliseconds(PChar->GetWeaponDelay(false)) * 0.75 < server_clock::now())
             {
                 if (CController::Engage(targid))
                 {

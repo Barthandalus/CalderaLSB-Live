@@ -10876,20 +10876,6 @@ void CLuaBaseEntity::fold()
 }
 
 /************************************************************************
- *  Function: doWildCard()
- *  Purpose : Executes the Wild Card two hour for a COR
- *  Example : caster:doWildCard(target,total)
- *  Notes   : Calls the DoWildCardToEntity member of battleutils
- ************************************************************************/
-
-void CLuaBaseEntity::doWildCard(CLuaBaseEntity* PEntity, uint8 total)
-{
-    XI_DEBUG_BREAK_IF(m_PBaseEntity->objtype != TYPE_PC);
-
-    battleutils::DoWildCardToEntity(static_cast<CCharEntity*>(m_PBaseEntity), static_cast<CCharEntity*>(PEntity->m_PBaseEntity), total);
-}
-
-/************************************************************************
  *  Function: addCorsairRoll()
  *  Purpose : Adds the Corsair Roll to the Target's Status Effect Container
  *  Example : target:addCorsairRoll(caster:getMainJob(), caster:getMerit(xi.merit.BUST_DURATION), xi.effect.CHAOS_ROLL, effectpower, 0, duration, caster:getID(),
@@ -14848,7 +14834,6 @@ void CLuaBaseEntity::Register()
     SOL_REGISTER("delLatent", CLuaBaseEntity::delLatent);
 
     SOL_REGISTER("fold", CLuaBaseEntity::fold);
-    SOL_REGISTER("doWildCard", CLuaBaseEntity::doWildCard);
     SOL_REGISTER("addCorsairRoll", CLuaBaseEntity::addCorsairRoll);
     SOL_REGISTER("hasCorsairEffect", CLuaBaseEntity::hasCorsairEffect);
     SOL_REGISTER("hasBustEffect", CLuaBaseEntity::hasBustEffect);

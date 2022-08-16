@@ -43,6 +43,7 @@
 #include "../roe.h"
 #include "../status_effect_container.h"
 #include "../utils/battleutils.h"
+#include "../utils/charutils.h"
 #include "../utils/petutils.h"
 #include "../utils/puppetutils.h"
 #include "../weapon_skill.h"
@@ -160,10 +161,10 @@ void CBattleEntity::UpdateHealth()
     TracyZoneScoped;
     int32 dif = (getMod(Mod::CONVMPTOHP) - getMod(Mod::CONVHPTOMP));
 
-    health.modmp = std::max(0, ((health.maxmp) * (100 + getMod(Mod::MPP)) / 100) +
-                                   std::min<int16>((health.maxmp * m_modStat[Mod::FOOD_MPP] / 100), m_modStat[Mod::FOOD_MP_CAP]) + getMod(Mod::MP));
-    health.modhp = std::max(1, ((health.maxhp) * (100 + getMod(Mod::HPP)) / 100) +
-                                   std::min<int16>((health.maxhp * m_modStat[Mod::FOOD_HPP] / 100), m_modStat[Mod::FOOD_HP_CAP]) + getMod(Mod::HP));
+    health.modmp = std::max(0, (((health.maxmp) + getMod(Mod::MP)) * (100 + getMod(Mod::MPP)) / 100) +
+                                   std::min<int16>((health.maxmp * m_modStat[Mod::FOOD_MPP] / 100), m_modStat[Mod::FOOD_MP_CAP]));
+    health.modhp = std::max(1, (((health.maxhp) + getMod(Mod::HP)) * (100 + getMod(Mod::HPP)) / 100) +
+                                   std::min<int16>((health.maxhp * m_modStat[Mod::FOOD_HPP] / 100), m_modStat[Mod::FOOD_HP_CAP]));
 
     dif = (health.modmp - 0) < dif ? (health.modmp - 0) : dif;
     dif = (health.modhp - 1) < -dif ? -(health.modhp - 1) : dif;
@@ -268,7 +269,9 @@ int16 CBattleEntity::GetWeaponDelay(bool tp)
     {
         return 1700;
     }
+
     uint16 WeaponDelay = 9999;
+
     if (auto* weapon = dynamic_cast<CItemWeapon*>(m_Weapons[SLOT_MAIN]))
     {
         uint16 MinimumDelay = weapon->getDelay(); // Track base delay.  We will need this later.  Mod::DELAY is ignored for now.
@@ -305,6 +308,12 @@ int16 CBattleEntity::GetWeaponDelay(bool tp)
         MinimumDelay -= (uint16)(MinimumDelay * 0.8);
         WeaponDelay = (WeaponDelay < MinimumDelay) ? MinimumDelay : WeaponDelay;
     }
+
+    // if (StatusEffectContainer->HasStatusEffect(EFFECT_BOOST))
+    // {
+        // WeaponDelay = (uint16)(WeaponDelay * 3.0f);
+    // }
+
     return WeaponDelay;
 }
 
@@ -632,8 +641,17 @@ uint16 CBattleEntity::ATT()
 {
     TracyZoneScoped;
     // TODO: consider which weapon!
+    // Determines character, pet, and mob ATT stat
+    // Base 8 ATT + ATT Mod
     int32 ATT    = 8 + m_modStat[Mod::ATT];
+
+    // if (this->GetLocalVar("AuditATT") == 1)
+    // {
+        // printf("battleentity.cpp ATT  NAME: [%s]  BASE: [%i]\n", this->GetName(), ATT);
+    // }
+
     auto* weapon = dynamic_cast<CItemWeapon*>(m_Weapons[SLOT_MAIN]);
+    // Determine whether the weapon is one-handed or two-handed and calculate ATT from STR
     if (weapon && weapon->isTwoHanded())
     {
         ATT += (STR() * 3) / 4;
@@ -646,6 +664,11 @@ uint16 CBattleEntity::ATT()
     {
         ATT += (STR() * 3) / 4;
     }
+
+    // if (this->GetLocalVar("AuditATT") == 1)
+    // {
+        // printf("battleentity.cpp ATT  NAME: [%s]  ADD STR: [%i]\n", this->GetName(), ATT);
+    // }
 
     if (this->StatusEffectContainer->HasStatusEffect(EFFECT_ENDARK))
     {
@@ -663,52 +686,170 @@ uint16 CBattleEntity::ATT()
             {
                 ATT += static_cast<int32>(ATT * this->getMod(Mod::SMITE) / 256.f); // Divide smite value by 256
             }
+
+            // Sword enhancement spells (Enspell) +ATT
+            if (this->getMod(Mod::ENSPELL) > 0)
+            {
+                // printf("battleentity.cpp ATT  ENSPELL BONUS: [%i]  BEFORE ATK: [%i]\n", this->getMod(Mod::ENSPELL_STAT_BONUS), ATT);
+                ATT += this->getMod(Mod::ENSPELL_STAT_BONUS);
+            }
         }
     }
     else if (this->objtype == TYPE_PET && ((CPetEntity*)this)->getPetType() == PET_TYPE::AUTOMATON)
     {
         ATT += this->GetSkill(SKILL_AUTOMATON_MELEE);
     }
-    return ATT + (ATT * m_modStat[Mod::ATTP] / 100) + std::min<int16>((ATT * m_modStat[Mod::FOOD_ATTP] / 100), m_modStat[Mod::FOOD_ATT_CAP]);
+    else if (this->objtype == TYPE_MOB && this->objtype != TYPE_PET)
+    {
+        if (weapon)
+        {
+            ATT += GetSkill(weapon->getSkillType());
+        }
+    }
+
+    int32 ATTP = 0;
+    int32 foodATTP = 0;
+
+    // Get ATTP Mod from buffs/debuffs/gear and determine percent of ATT Mod
+    ATTP += static_cast<int32>(ATT * (m_modStat[Mod::ATTP] / 100.00f));
+
+    // Get ATTP Mod from food and determine percent of ATT Mod
+    foodATTP += static_cast<int32>(ATT * (m_modStat[Mod::FOOD_ATTP] / 100.00f));
+
+    if (this->GetLocalVar("AuditATT") == 1)
+    {
+        printf("battleentity.cpp ATT  NAME: [%s]  BASE: [%i]  ATTP: [%i]  FOOD ATTP: [%i]  FINAL: [%i]\n\n", this->GetName(), ATT, ATTP, foodATTP, ATT + ATTP + std::min<int16>(foodATTP, m_modStat[Mod::FOOD_ATT_CAP]));
+    }
+
+    // Calculate final ATT stat from Base ATT + ATTP + foodATTP
+    ATT = ATT + ATTP + std::min<int16>(foodATTP, m_modStat[Mod::FOOD_ATT_CAP]);
+
+    // Check for Ferine +2 set effect
+    if (this->objtype & TYPE_PC && this->PPet != nullptr && xirand::GetRandomNumber(100) <= this->getMod(Mod::OCC_VARIES_ATT_PET_HP))
+    {
+        // int32 beforeAdj = ATT;
+        float adjATT = (float)this->PPet->health.hp / (float)this->PPet->GetMaxHP();
+
+        if (adjATT < 0.5)
+        {
+            adjATT = 0.5;
+        }
+        ATT = static_cast<int32>(ATT * (1 + adjATT));
+        // printf("battleentity.cpp ATT VARIES PET HP  ATT BEFORE: [%i]  ADJUSTMENT: [%f]  ADJUSTED: [%i]\n", beforeAdj, adjATT, ATT);
+    }
+
+    // Check for Bale +2 set effect
+    if (this->objtype & TYPE_PC && xirand::GetRandomNumber(100) <= this->getMod(Mod::OCC_VARIES_ATT_HP))
+    {
+        // int32 beforeAdj = ATT;
+        float adjATT = (float)health.hp / (float)this->GetMaxHP();
+
+        if (adjATT < 0.5)
+        {
+            adjATT = 0.5;
+        }
+        ATT = static_cast<int32>(ATT * (1 + adjATT));
+        // printf("battleentity.cpp ATT VARIES HP  ATT BEFORE: [%i]  ADJUSTMENT: [%f]  ADJUSTED: [%i]\n", beforeAdj, adjATT, ATT);
+    }
+
+    return ATT;
 }
 
 uint16 CBattleEntity::RATT(uint8 skill, uint16 bonusSkill)
 {
+    // Determines character, pet, and mob RATT stat
+    // Base 8 RATT + Ranged Skill + iLvl Skill + RATT Mod + RATT Bonus + (STR / 2)
     auto* PWeakness = StatusEffectContainer->GetStatusEffect(EFFECT_WEAKNESS);
     if (PWeakness && PWeakness->GetPower() >= 2)
     {
         return 0;
     }
-    int32 ATT = 8 + GetSkill(skill) + bonusSkill + m_modStat[Mod::RATT] + battleutils::GetRangedAttackBonuses(this) + (STR() * 3) / 4;
-    return ATT + (ATT * m_modStat[Mod::RATTP] / 100) + std::min<int16>((ATT * m_modStat[Mod::FOOD_RATTP] / 100), m_modStat[Mod::FOOD_RATT_CAP]);
+
+    int32 RATTP = 0;
+    int32 foodRATTP = 0;
+    int32 iLvlSkill = 0;
+
+    if (auto weapon = dynamic_cast<CItemWeapon*>(m_Weapons[SLOT_RANGED]))
+    {
+        iLvlSkill = weapon->getILvlSkill();
+    }
+
+    int32 RATT = 8 + GetSkill(skill) + iLvlSkill + bonusSkill + m_modStat[Mod::RATT] + battleutils::GetRangedAttackBonuses(this) + STR();
+
+    // Get RATTP Mod from buffs/debuffs/gear and determine percent of RATT Mod
+    RATTP += static_cast<int32>(RATT * (m_modStat[Mod::RATTP] / 100.00f));
+
+    // Get RATTP Mod from food and determine percent of RATT Mod
+    foodRATTP += static_cast<int32>(RATT * (m_modStat[Mod::FOOD_RATTP] / 100.00f));
+
+    if (this->GetLocalVar("AuditRATT") == 1)
+    {
+        printf("battleentity.cpp RATT  NAME: [%s]  BASE: [%i]  RATTP: [%i]  FOOD RATTP: [%i]  FINAL: [%i]\n\n", this->GetName(), RATT, RATTP, foodRATTP, RATT + RATTP + std::min<int16>(foodRATTP, m_modStat[Mod::FOOD_RATT_CAP]));
+    }
+
+    // Calculate final RATT stat from Base RATT + RATTP + foodRATTP
+    RATT = RATT + RATTP + std::min<int16>(foodRATTP, m_modStat[Mod::FOOD_RATT_CAP]);
+
+    return RATT;
 }
 
 uint16 CBattleEntity::RACC(uint8 skill, uint16 bonusSkill)
 {
+    // Determines character and mob RACC stat
     TracyZoneScoped;
     auto* PWeakness = StatusEffectContainer->GetStatusEffect(EFFECT_WEAKNESS);
+
     if (PWeakness && PWeakness->GetPower() >= 2)
     {
         return 0;
     }
-    int    skill_level = GetSkill(skill) + bonusSkill;
-    uint16 acc         = skill_level;
-    if (skill_level > 200)
+
+    uint16 iLvlSkill = 0;
+
+    if (auto weapon = dynamic_cast<CItemWeapon*>(m_Weapons[SLOT_RANGED]))
     {
-        acc = (uint16)(200 + (skill_level - 200) * 0.9);
+        iLvlSkill = weapon->getILvlSkill();
     }
+
+    uint16 skill_level = GetSkill(skill) + iLvlSkill + bonusSkill;
+    uint16 acc = skill_level;
+
+    if (skill_level <= 200)
+    {
+        acc = skill_level;
+    }
+    else if (skill_level >= 201 && skill_level <= 400)
+    {
+        acc = (uint16)(((skill_level - 200) * 0.9) + 200);
+    }
+    else if (skill_level >= 401 && skill_level <= 600)
+    {
+        acc = (uint16)(((skill_level - 400) * 0.8) + 380);
+    }
+    else if (skill_level >= 601)
+    {
+        acc = (uint16)(((skill_level - 600) * 0.9) + 540);
+    }
+
     acc += getMod(Mod::RACC);
     acc += battleutils::GetRangedAccuracyBonuses(this);
     acc += (AGI() * 3) / 4;
+
+    if (this->GetLocalVar("AuditRACC") == 1)
+    {
+        printf("battleentity.cpp RACC  NAME: [%s]  BASE: [%i]  FINAL: [%i]\n\n", this->GetName(), acc, acc + std::min<int16>(((100 + getMod(Mod::FOOD_RACCP) * acc) / 100), getMod(Mod::FOOD_RACC_CAP)));
+    }
+
     return acc + std::min<int16>(((100 + getMod(Mod::FOOD_RACCP) * acc) / 100), getMod(Mod::FOOD_RACC_CAP));
 }
 
 uint16 CBattleEntity::ACC(uint8 attackNumber, uint8 offsetAccuracy)
 {
+    // Determines character, pet, and mob ACC stat
     TracyZoneScoped;
     if (this->objtype & TYPE_PC)
     {
-        uint8  skill     = 0;
+        uint16 skill     = 0;
         uint16 iLvlSkill = 0;
         if (attackNumber == 0)
         {
@@ -746,8 +887,23 @@ uint16 CBattleEntity::ACC(uint8 attackNumber, uint8 offsetAccuracy)
             }
             skill = SKILL_HAND_TO_HAND;
         }
-        int16 ACC = GetSkill(skill) + iLvlSkill;
-        ACC       = (ACC > 200 ? (int16)(((ACC - 200) * 0.9) + 200) : ACC);
+
+        int16 skill_level = GetSkill(skill) + iLvlSkill;
+        int16 ACC         = skill_level;
+
+        if (skill_level >= 201 && skill_level <= 400)
+        {
+            ACC = (uint16)(((skill_level - 200) * 0.9) + 200);
+        }
+        else if (skill_level >= 401 && skill_level <= 600)
+        {
+            ACC = (uint16)(((skill_level - 400) * 0.8) + 380);
+        }
+        else if (skill_level >= 601)
+        {
+            ACC = (uint16)(((skill_level - 600) * 0.9) + 540);
+        }
+
         if (auto* weapon = dynamic_cast<CItemWeapon*>(m_Weapons[SLOT_MAIN]); weapon && weapon->isTwoHanded())
         {
             ACC += (int16)(DEX() * 0.75);
@@ -756,13 +912,30 @@ uint16 CBattleEntity::ACC(uint8 attackNumber, uint8 offsetAccuracy)
         {
             ACC += (int16)(DEX() * 0.75);
         }
-        ACC         = (ACC + m_modStat[Mod::ACC] + offsetAccuracy);
+
+        ACC = (ACC + m_modStat[Mod::ACC] + offsetAccuracy);
+
         auto* PChar = dynamic_cast<CCharEntity*>(this);
+
         if (PChar)
         {
             ACC += PChar->PMeritPoints->GetMeritValue(MERIT_ACCURACY, PChar);
+
+            // Sword enhancement spells (Enspell) +ACC
+            if (PChar->getMod(Mod::ENSPELL) > 0)
+            {
+                // printf("battleentity.cpp ACC  ENSPELL BONUS: [%i]  BEFORE ACC: [%i]\n", this->getMod(Mod::ENSPELL_STAT_BONUS), ACC);
+                ACC += PChar->getMod(Mod::ENSPELL_STAT_BONUS);
+            }
         }
+
+        if (this->GetLocalVar("AuditACC") == 1)
+        {
+            printf("battleentity.cpp ACC  NAME: [%s]  BASE: [%i]  FINAL: [%i]\n\n", this->GetName(), ACC, ACC + std::min<int16>((ACC * m_modStat[Mod::FOOD_ACCP] / 100), m_modStat[Mod::FOOD_ACC_CAP]));
+        }
+
         ACC = ACC + std::min<int16>((ACC * m_modStat[Mod::FOOD_ACCP] / 100), m_modStat[Mod::FOOD_ACC_CAP]);
+
         return std::max<int16>(0, ACC);
     }
     else if (this->objtype == TYPE_PET && ((CPetEntity*)this)->getPetType() == PET_TYPE::AUTOMATON)
@@ -784,24 +957,67 @@ uint16 CBattleEntity::ACC(uint8 attackNumber, uint8 offsetAccuracy)
 
 uint16 CBattleEntity::DEF()
 {
-    int32 DEF = 8 + m_modStat[Mod::DEF] + VIT() / 2;
+    // Determines character, pet, and mod DEF stat
+    // Base 8 DEF + (VIT / 2) + DEF Mod
+    int32 DEF = 8 + (VIT() / 2) + m_modStat[Mod::DEF];
+
+    if (this->objtype & TYPE_PC)
+    {
+        int16 mainLevel = this->GetMLevel();
+
+        if (mainLevel >= 51 && mainLevel <= 60)
+        {
+            DEF = (VIT() / 2) + ((2 * mainLevel) - 42) + m_modStat[Mod::DEF];
+        }
+        else if (mainLevel >= 61 && mainLevel <= 90)
+        {
+            DEF = (VIT() / 2) + mainLevel + 18 + m_modStat[Mod::DEF];
+        }
+        else if (mainLevel >= 91 && mainLevel <= 99)
+        {
+            DEF = (VIT() / 2) + mainLevel + 18 + (int16)((mainLevel - 89) / 2) + m_modStat[Mod::DEF];
+        }
+    }
+
     if (this->StatusEffectContainer->HasStatusEffect(EFFECT_COUNTERSTANCE, 0))
     {
         return DEF / 2;
     }
 
-    return DEF + (DEF * m_modStat[Mod::DEFP] / 100) + std::min<int16>((DEF * m_modStat[Mod::FOOD_DEFP] / 100), m_modStat[Mod::FOOD_DEF_CAP]);
+    int32 DEFP = 0;
+    int32 foodDEFP = 0;
+
+    // Get DEFP Mod from buffs/debuffs/gear and determine percent of DEF Mod
+    DEFP += static_cast<int32>(DEF * (m_modStat[Mod::DEFP] / 100.00f));
+
+    // Get DEFP Mod from food and determine percent of DEF Mod
+    foodDEFP += static_cast<int32>(DEF * (m_modStat[Mod::FOOD_DEFP] / 100.00f));
+
+    // Calculate final DEF stat from Base DEF + DEFP + foodDEFP
+    DEF = DEF + DEFP + std::min<int16>(foodDEFP, m_modStat[Mod::FOOD_DEF_CAP]);
+
+    return DEF;
 }
 
 uint16 CBattleEntity::EVA()
 {
     int16 evasion = GetSkill(SKILL_EVASION);
 
+    // Evasion skill is 0.9 evasion post-200
     if (evasion > 200)
-    { // Evasion skill is 0.9 evasion post-200
+    {
         evasion = (int16)(200 + (evasion - 200) * 0.9);
     }
-    return std::max(0, (m_modStat[Mod::EVA] + evasion + AGI() / 2));
+
+    evasion += std::max(0, m_modStat[Mod::EVA] + (AGI() / 2));
+
+    int32 foodEVAP = 0;
+
+    foodEVAP += static_cast<int32>(evasion * (m_modStat[Mod::FOOD_EVAP] / 100.00f));
+
+    evasion += std::min<int16>(foodEVAP, m_modStat[Mod::FOOD_EVAP_CAP]);
+
+    return evasion;
 }
 
 /************************************************************************
@@ -1376,7 +1592,24 @@ void CBattleEntity::OnCastFinished(CMagicState& state, action_t& action)
 
     luautils::OnSpellPrecast(this, PSpell);
 
+    // Retrieve original spell MP cost and calculate Conserve MP trait
+    int16 currentMP        = this->health.mp;
+    int16 spellCost        = PSpell->getMPCost();
+    int16 costReduction    = 0;
+    int16 reductionPercent = 0;
+
     state.SpendCost();
+
+    // Calculate cost reduction from Conserve MP and store in Character Variable for "Augments Conserve MP" gear set effects
+    if (this->objtype == TYPE_PC)
+    {
+        CCharEntity* PChar = (CCharEntity*)this;
+        costReduction = PSpell->getMPCost() - (currentMP - this->health.mp);
+        reductionPercent = (uint16)(((float)costReduction / (float)spellCost) * 100.0f);
+
+        charutils::SetCharVar(PChar, "AugConserveMP", reductionPercent);
+        // PSpell->setMPCost(reductionPercent);
+    }
 
     // remove effects based on spell cast first
     int16 effectFlags = EFFECTFLAG_INVISIBLE | EFFECTFLAG_MAGIC_BEGIN;
@@ -1394,6 +1627,7 @@ void CBattleEntity::OnCastFinished(CMagicState& state, action_t& action)
     // can this spell target the dead?
 
     uint8 flags = FINDFLAGS_NONE;
+
     if (PSpell->getValidTarget() & TARGET_PLAYER_DEAD)
     {
         flags |= FINDFLAGS_DEAD;
@@ -1402,6 +1636,7 @@ void CBattleEntity::OnCastFinished(CMagicState& state, action_t& action)
     {
         flags |= FINDFLAGS_HIT_ALL;
     }
+
     uint8 aoeType = battleutils::GetSpellAoEType(this, PSpell);
 
     if (aoeType == SPELLAOE_RADIAL)
@@ -1538,6 +1773,12 @@ void CBattleEntity::OnCastFinished(CMagicState& state, action_t& action)
         else
         {
             state.ApplyEnmity(PTarget, ce, ve);
+
+            if (this->objtype == TYPE_PC && PTarget->objtype == TYPE_MOB)
+            {
+                // Trigger Treasure Hunter from magic
+                battleutils::ApplyTreasureHunter(this, PTarget, &actionTarget, false);
+            }
         }
 
         if (PTarget->objtype == TYPE_MOB &&
@@ -1745,7 +1986,24 @@ bool CBattleEntity::OnAttack(CAttackState& state, action_t& action)
                     }
                     else
                     {
-                        int16 naturalh2hDMG = 0;
+                        int16 naturalh2hDMG      = 0;
+                        int16 counterBonusDMG    = PTarget->getMod(Mod::COUNTER_DMG);
+                        int16 thirdEyeCounterDMG = PTarget->getMod(Mod::THIRD_EYE_COUNTER_DMG);
+                        float counterATTVaries   = PTarget->getMod(Mod::COUNTER_ATT_VARIES);
+
+                        if (counterATTVaries > 0)
+                        {
+                            int32 attackerATT = PTarget->ATT();
+                            int32 defenderATT = this->ATT();
+
+                            counterATTVaries = 1.0f + (float)((defenderATT - attackerATT) / defenderATT);
+
+                            if (PTarget->objtype == TYPE_PC && charutils::GetCharVar((CCharEntity*)PTarget, "AuditCounter") == 1)
+                            {
+                                printf("battleentity.cpp OnAttack  COUNTER ATTACKER: [%s]  ATT: [%i]  DEFENDER: [%s]  ATT: [%i]  VARIES: [%1.2f]\n", PTarget->GetName(), attackerATT, this->GetName(), defenderATT, counterATTVaries);
+                            }
+                        }
+
                         if (auto* targ_weapon = dynamic_cast<CItemWeapon*>(PTarget->m_Weapons[SLOT_MAIN]);
                             (targ_weapon && targ_weapon->getSkillType() == SKILL_HAND_TO_HAND) ||
                             (PTarget->objtype == TYPE_MOB && PTarget->GetMJob() == JOB_MNK))
@@ -1757,6 +2015,7 @@ bool CBattleEntity::OnAttack(CAttackState& state, action_t& action)
                         // Needs verification, as there appears to be conflicting information regarding an attack bonus based on DEX
                         // vs a base damage increase.
                         float csJpAtkBonus = 0;
+
                         if (PTarget->objtype == TYPE_PC && PTarget->GetMJob() == JOB_MNK && PTarget->StatusEffectContainer->HasStatusEffect(EFFECT_COUNTERSTANCE))
                         {
                             auto*  PChar        = static_cast<CCharEntity*>(PTarget);
@@ -1766,8 +2025,9 @@ bool CBattleEntity::OnAttack(CAttackState& state, action_t& action)
                             csJpAtkBonus = 1 + ((static_cast<float>(targetDex) / 100) * csJpModifier);
                         }
 
-                        float DamageRatio = battleutils::GetDamageRatio(PTarget, this, attack.IsCritical(), csJpAtkBonus);
-                        auto  damage      = (int32)((PTarget->GetMainWeaponDmg() + naturalh2hDMG + battleutils::GetFSTR(PTarget, this, SLOT_MAIN)) * DamageRatio);
+                        float atkBonus    = csJpAtkBonus + counterATTVaries;
+                        float DamageRatio = battleutils::GetDamageRatio(PTarget, this, attack.IsCritical(), atkBonus);
+                        auto  damage      = (int32)((PTarget->GetMainWeaponDmg() + naturalh2hDMG + counterBonusDMG + thirdEyeCounterDMG + battleutils::GetFSTR(PTarget, this, SLOT_MAIN)) * DamageRatio);
 
                         actionTarget.spikesParam =
                             battleutils::TakePhysicalDamage(PTarget, this, attack.GetAttackType(), damage, false, SLOT_MAIN, 1, nullptr, true, false, true);
@@ -1842,6 +2102,7 @@ bool CBattleEntity::OnAttack(CAttackState& state, action_t& action)
                 actionTarget.param =
                     battleutils::TakePhysicalDamage(this, PTarget, attack.GetAttackType(), attack.GetDamage(), attack.IsBlocked(), attack.GetWeaponSlot(), 1,
                                                     attackRound.GetTAEntity(), true, true, attack.IsCountered(), attack.IsCovered(), POriginalTarget);
+
                 if (actionTarget.param < 0)
                 {
                     actionTarget.param     = -(actionTarget.param);
@@ -1890,6 +2151,9 @@ bool CBattleEntity::OnAttack(CAttackState& state, action_t& action)
 
             // Check & Handle Afflatus Misery Accuracy Bonus
             battleutils::HandleAfflatusMiseryAccuracyBonus(this);
+
+            // Check & Handle Impetus Attack and Critical Hit Rate Bonuses
+            battleutils::HandleImpetusEffects(this);
         }
 
         // If we didn't hit at all, set param to 0 if we didn't blink any shadows.
@@ -1904,11 +2168,23 @@ bool CBattleEntity::OnAttack(CAttackState& state, action_t& action)
             battleutils::HandleEnspell(this, PTarget, &actionTarget, attack.IsFirstSwing(), (CItemWeapon*)this->m_Weapons[attack.GetWeaponSlot()],
                                        attack.GetDamage());
             battleutils::HandleSpikesDamage(this, PTarget, &actionTarget, attack.GetDamage());
+            
+            if (attack.IsFirstSwing() && actionTarget.param > 0)
+            {
+                // Trigger Treasure Hunter from melee
+                battleutils::ApplyTreasureHunter(this, PTarget, &actionTarget, true);
+            }
         }
 
         // if we parried, run battuta check if applicable
         if ((actionTarget.reaction & REACTION::PARRY) == REACTION::PARRY && PTarget->StatusEffectContainer->HasStatusEffect(EFFECT_BATTUTA))
         {
+            if (PTarget->getMod(Mod::PARRY_RECOVER_HP) > 0)
+            {
+                // printf("battleentity.cpp OnAttack PARRY RECOVER HP: [%i]\n", PTarget->getMod(Mod::PARRY_RECOVER_HP));
+                PTarget->addHP(PTarget->getMod(Mod::PARRY_RECOVER_HP));
+            }
+
             battleutils::HandleParrySpikesDamage(this, PTarget, &actionTarget, attack.GetDamage());
         }
 
@@ -1931,6 +2207,13 @@ bool CBattleEntity::OnAttack(CAttackState& state, action_t& action)
             {
                 attack.SetAttackType(PHYSICAL_ATTACK_TYPE::ZANSHIN);
                 attack.SetAsFirstSwing(false);
+
+                if (xirand::GetRandomNumber(100) < this->getMod(Mod::ZANSHIN_DOUBLE_ATTACK))
+                {
+                    attack.SetAttackType(PHYSICAL_ATTACK_TYPE::ZANSHIN);
+                    attack.SetAsFirstSwing(true);
+                    // printf("battleentity.cpp OnAttack ZANSHIN DOUBLE ATTACK TRIGGERED\n");
+                }
             }
             else
             {
