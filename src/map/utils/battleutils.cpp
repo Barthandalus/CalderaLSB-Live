@@ -3371,9 +3371,7 @@ namespace battleutils
 
     uint8 GetCritHitRate(CBattleEntity* PAttacker, CBattleEntity* PDefender, bool ignoreSneakTrickAttack)
     {
-        CCharEntity* PChar           = (CCharEntity*)PAttacker;
-        int32 critHitRate            = 5;
-        int32 climacticflourishcrits = charutils::GetCharVar(PChar, "ClimacticFlourishCrits");
+        int32 critHitRate = 5;
 
         if (PAttacker->StatusEffectContainer->HasStatusEffect(EFFECT_MIGHTY_STRIKES, 0) ||
             PAttacker->StatusEffectContainer->HasStatusEffect(EFFECT_MIGHTY_STRIKES))
@@ -3397,12 +3395,17 @@ namespace battleutils
             }
         }
         // Apply and track Climactic Flourish first swing guaranteed crits
-        else if ((PAttacker->objtype == TYPE_PC) && (!ignoreSneakTrickAttack) &&
-                 (PAttacker->StatusEffectContainer->HasStatusEffect(EFFECT_CLIMACTIC_FLOURISH)) && (climacticflourishcrits > 0))
+        else if (!ignoreSneakTrickAttack &&
+                 PAttacker->StatusEffectContainer->HasStatusEffect(EFFECT_CLIMACTIC_FLOURISH) &&
+                 PAttacker->StatusEffectContainer->GetStatusEffect(EFFECT_CLIMACTIC_FLOURISH)->GetPower() > 0)
         {
+            CStatusEffect* effect = PAttacker->StatusEffectContainer->GetStatusEffect(EFFECT_CLIMACTIC_FLOURISH);
+            int8 crits            = effect->GetPower();
+
             critHitRate = 100;
-            climacticflourishcrits = climacticflourishcrits - 1;
-            charutils::SetCharVar(PChar, "ClimacticFlourishCrits", climacticflourishcrits);
+            crits       = crits - 1;
+
+            effect->SetPower(crits);
         }
         else
         {

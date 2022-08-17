@@ -513,27 +513,33 @@ bool CAttack::CheckCover()
  ************************************************************************/
 void CAttack::ProcessDamage()
 {
-    CCharEntity* PChar = (CCharEntity*)m_attacker;
-
     // Sneak attack.
     if (m_attacker->GetMJob() == JOB_THF && m_isFirstSwing && m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_SNEAK_ATTACK) &&
        ((abs(m_victim->loc.p.rotation - m_attacker->loc.p.rotation) < 23) || m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_HIDE) ||
         m_victim->StatusEffectContainer->HasStatusEffect(EFFECT_DOUBT)))
     {
         m_trickAttackDamage += (int32)(m_attacker->DEX() * (1.125f + m_attacker->getMod(Mod::SNEAK_ATK_DEX) / 100.0f));
-        PChar->SetLocalVar("SneakAttack_Active", 1);
+
+        if (m_attacker->objtype == TYPE_PC)
+        {
+            dynamic_cast<CCharEntity*>(m_attacker)->SetLocalVar("SneakAttack_Active", 1);
+        }
     }
 
     // Trick attack.
     if (m_attacker->GetMJob() == JOB_THF && m_isFirstSwing && m_attackRound->GetTAEntity() != nullptr)
     {
         m_trickAttackDamage += (int32)(m_attacker->AGI() * (1.125f + m_attacker->getMod(Mod::TRICK_ATK_AGI) / 100.0f));
-        PChar->SetLocalVar("TrickAttack_Active", 1);
+
+        if (m_attacker->objtype == TYPE_PC)
+        {
+            dynamic_cast<CCharEntity*>(m_attacker)->SetLocalVar("TrickAttack_Active", 1);
+        }
     }
 
-    SLOTTYPE slot = (SLOTTYPE)GetWeaponSlot();
+    SLOTTYPE slot   = (SLOTTYPE)GetWeaponSlot();
     auto mainWeapon = dynamic_cast<CItemWeapon*>(m_attacker->m_Weapons[SLOT_MAIN]);
-    auto subWeapon = dynamic_cast<CItemWeapon*>(m_attacker->m_Weapons[SLOT_SUB]);
+    auto subWeapon  = dynamic_cast<CItemWeapon*>(m_attacker->m_Weapons[SLOT_SUB]);
 
     if (m_attackRound->IsH2H())
     {
@@ -557,28 +563,28 @@ void CAttack::ProcessDamage()
     // Apply "Double Attack" damage and "Triple Attack" damage mods
     if (m_attackType == PHYSICAL_ATTACK_TYPE::DOUBLE && m_attacker->objtype == TYPE_PC)
     {
-        if (m_attacker->objtype == TYPE_PC && PChar != nullptr && charutils::GetCharVar(PChar, "AuditMultiHit") == 1)
+        if (m_attacker->objtype == TYPE_PC && charutils::GetCharVar(dynamic_cast<CCharEntity*>(m_attacker), "AuditMultiHit") == 1)
         {
             printf("attack.cpp ProcessDamage  1  DOUBLE ATTACK DAMAGE: [%i]  MULTIPLIER: [%1.2f]\n", m_damage, (100.0f + m_attacker->getMod(Mod::DOUBLE_ATTACK_DMG)) / 100.0f);
         }
 
         m_damage = (int32)(m_damage * ((100.0f + m_attacker->getMod(Mod::DOUBLE_ATTACK_DMG)) / 100.0f));
 
-        if (m_attacker->objtype == TYPE_PC && PChar != nullptr && charutils::GetCharVar(PChar, "AuditMultiHit") == 1)
+        if (m_attacker->objtype == TYPE_PC && charutils::GetCharVar(dynamic_cast<CCharEntity*>(m_attacker), "AuditMultiHit") == 1)
         {
             printf("attack.cpp ProcessDamage  2  DOUBLE ATTACK DAMAGE: [%i]\n", m_damage);
         }
     }
     else if (m_attackType == PHYSICAL_ATTACK_TYPE::TRIPLE && m_attacker->objtype == TYPE_PC)
     {
-        if (m_attacker->objtype == TYPE_PC && PChar != nullptr && charutils::GetCharVar(PChar, "AuditMultiHit") == 1)
+        if (m_attacker->objtype == TYPE_PC && charutils::GetCharVar(dynamic_cast<CCharEntity*>(m_attacker), "AuditMultiHit") == 1)
         {
             printf("attack.cpp ProcessDamage  1  TRIPLE ATTACK DAMAGE: [%i]  MULTIPLIER: [%1.2f]\n", m_damage, (100.0f + m_attacker->getMod(Mod::TRIPLE_ATTACK_DMG)) / 100.0f);
         }
 
         m_damage = (int32)(m_damage * ((100.0f + m_attacker->getMod(Mod::TRIPLE_ATTACK_DMG)) / 100.0f));
 
-        if (m_attacker->objtype == TYPE_PC && PChar != nullptr && charutils::GetCharVar(PChar, "AuditMultiHit") == 1)
+        if (m_attacker->objtype == TYPE_PC && charutils::GetCharVar(dynamic_cast<CCharEntity*>(m_attacker), "AuditMultiHit") == 1)
         {
             printf("attack.cpp ProcessDamage  2  TRIPLE ATTACK DAMAGE: [%i]\n", m_damage);
         }
@@ -690,18 +696,20 @@ void CAttack::ProcessDamage()
     }
 
     // Apply Climactic, Striking, and Ternary Flourishes based off of player CHR
-    if (m_isFirstSwing && m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_CLIMACTIC_FLOURISH) ||
+    if (m_isFirstSwing &&
+       (m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_CLIMACTIC_FLOURISH) ||
         m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_STRIKING_FLOURISH) ||
-        m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_TERNARY_FLOURISH))
+        m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_TERNARY_FLOURISH)))
     {
-        int32 flourishBonus = m_attacker->stats.CHR + m_attacker->getMod(Mod::CHR);
+        int16 flourishBonus = m_attacker->stats.CHR + m_attacker->getMod(Mod::CHR);
 
         if (m_attacker->StatusEffectContainer->HasStatusEffect(EFFECT_CLIMACTIC_FLOURISH))
         {
-            flourishBonus = (int32)(flourishBonus / 2.0f);
-            int32 climacticflourishcrits = charutils::GetCharVar(PChar, "ClimacticFlourishCrits");
+            CStatusEffect* effect = m_attacker->StatusEffectContainer->GetStatusEffect(EFFECT_CLIMACTIC_FLOURISH);
+            int8 crits            = effect->GetPower();
+            flourishBonus         = (int16)(flourishBonus / 2.0f);
 
-            if (climacticflourishcrits == 0)
+            if (crits == 0)
             {
                 m_attacker->StatusEffectContainer->DelStatusEffect(EFFECT_CLIMACTIC_FLOURISH);
             }

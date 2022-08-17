@@ -136,7 +136,6 @@ bool CAbilityState::CanUseAbility()
     {
         auto* PAbility = GetAbility();
         auto* PChar    = static_cast<CCharEntity*>(m_PEntity);
-        auto* PWeapon  = PChar->getStorage(PChar->equipLoc[SLOT_MAIN])->GetItem(PChar->equip[SLOT_MAIN]);
 
         if (PChar->PRecastContainer->HasRecast(RECAST_ABILITY, PAbility->getRecastId(), PAbility->getRecastTime()))
         {
@@ -154,14 +153,6 @@ bool CAbilityState::CanUseAbility()
         }
 
         std::unique_ptr<CBasicPacket> errMsg;
-
-        // Turns Liement into an AoE when Epeolatry is equipped
-        if ((PWeapon->getID() == 20753 || PWeapon->getID() == 21685) && (PAbility->getID() == ABILITY_LIEMENT))
-        {
-            PAbility->setAOE(1);
-            PAbility->setRange(20);
-            PAbility->setValidTarget(3);
-        }
 
         // Set ability target
         auto* PTarget = GetTarget();
