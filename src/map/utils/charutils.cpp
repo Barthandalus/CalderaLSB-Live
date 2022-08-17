@@ -865,6 +865,19 @@ namespace charutils
 
         luautils::OnZoneIn(PChar);
         luautils::OnGameIn(PChar, zoning == 1);
+        
+        if (zoning == 2)
+        {
+            ShowDebug("Player <%s> logging in to zone <%u>\n", PChar->name.c_str(), PChar->getZone());
+            
+            //Schaedel - Handle login message
+            std::string msg1 = "^(o.o)> ";
+            std::string charName = PChar->name.c_str();
+            std::string msg2 = " has logged in <(o.o)^";
+            std::string loginmsg = msg1 + charName + msg2;
+            
+            message::send(MSG_CHAT_SERVMES, 0, 0, new CChatMessagePacket(PChar, MESSAGE_SYSTEM_3, loginmsg));
+        }
     }
 
     void LoadSpells(CCharEntity* PChar)
